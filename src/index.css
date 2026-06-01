@@ -1,1 +1,11 @@
 @import "tailwindcss";
+
+@theme {
+    --color-background: #0f0f13;
+    --color-surface: #1a1a24;
+    --color-accent: #7c6af7;
+    --color-text: #e8e8f0;
+    --color-subtle: #6b6b80;
+    --font-display: "Cormorant Garamond", serif;
+    --font-body: "DM Sans", sans-serif;
+}
