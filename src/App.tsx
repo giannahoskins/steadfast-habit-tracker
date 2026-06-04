@@ -1,8 +1,12 @@
 import type { Habit } from "./types"
 import { useState, useEffect } from "react"
 import Calendar from "./components/Calendar"
+import HabitSuggestionModal from "./components/HabitSuggestionModal"
 
 function App() {
+  const [isAddingHabit, setIsAddingHabit] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
   const [habits, setHabits] = useState<Habit[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('myHabits') ?? '[]')
@@ -10,8 +14,6 @@ function App() {
       return []
     }
   })
-
-  const [isAddingHabit, setIsAddingHabit] = useState(false)
 
   function handleAddHabit(habitName: string) {
     const newHabit: Habit = {
@@ -52,6 +54,13 @@ function App() {
       ) : (
         <Calendar habits={habits} onDeleteHabit={handleDeleteHabit} onCompleteHabit={handleCompleteHabit} onAddHabit={handleAddHabit} isAddingHabit={isAddingHabit} setIsAddingHabit={setIsAddingHabit} onSaveEdit={handleSaveEdit}/>
       )}
+      <button onClick={() => setIsModalOpen(true)}>Open Modal</button>
+      {isModalOpen === true &&
+        <>
+          <HabitSuggestionModal isOpen={true} />
+          <button onClick={() => setIsModalOpen(false)}>Close Modal</button>
+        </>
+      }
     </div>
   )
 }
