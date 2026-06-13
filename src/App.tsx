@@ -28,15 +28,16 @@ function App() {
   })
 
   function handleAddHabit(habitName: string) {
-    const newHabit: Habit = {
-      id: crypto.randomUUID(),
-      name: habitName,
-      completedDates: [],
-      createdOn: `${new Date().getFullYear()}-${new Date().getMonth() + 1}-${new Date().getDate()}`,
-      color: habitColors[habits.length % habitColors.length]
-    }
-
-    setHabits([...habits, newHabit])
+    setHabits(prev => {
+        const newHabit: Habit = {
+            id: crypto.randomUUID(),
+            name: habitName,
+            completedDates: [],
+            createdOn: `${new Date().getFullYear()}-${new Date().getMonth() + 1}-${new Date().getDate()}`,
+            color: habitColors[prev.length % habitColors.length]
+        }
+        return [...prev, newHabit]
+    })
   }
 
   function handleDeleteHabit(id: string) {
@@ -71,7 +72,7 @@ function App() {
           <div className="no-habits flex justify-between relative">
             <div className="no-habits-text-container">
               <span className="text-subtle uppercase tracking-[3px]">Day 0</span>
-              <h2 className="header-text max-w-75">Your <span className="bg-gradient-to-r from-[#a29bfe] to-[#dfe6fd] bg-clip-text text-transparent">streak</span> starts here.</h2>
+              <h2 className="header-text max-w-75">Your <span className="purple-gradient">streak</span> starts here.</h2>
               <p className="body-text max-w-100 mt-5">Track the habits that move you forward. One day at a time.</p>
               <div className="flex mt-8">
                 <button className="flex items-center purple-button mr-3" onClick={() => setIsAddingHabit(true)}><IconPlus size={16} /> <span className="ml-2.5 font-medium">Add habit</span></button>
@@ -95,10 +96,10 @@ function App() {
           </div>
         </>
       ) : (
-        <Calendar habits={habits} onDeleteHabit={handleDeleteHabit} onCompleteHabit={handleCompleteHabit} onAddHabit={handleAddHabit} isAddingHabit={isAddingHabit} setIsAddingHabit={setIsAddingHabit} onSaveEdit={handleSaveEdit} setShowStats={setShowStats} setIsModalOpen={setIsModalOpen} />
+        <Calendar habits={habits} onDeleteHabit={handleDeleteHabit} onCompleteHabit={handleCompleteHabit} onAddHabit={handleAddHabit} isAddingHabit={isAddingHabit} setIsAddingHabit={setIsAddingHabit} onSaveEdit={handleSaveEdit} setShowStats={setShowStats} showStats={showStats} setIsModalOpen={setIsModalOpen} />
       )}
       {isModalOpen === true &&
-          <HabitSuggestionModal isOpen={true} onAddHabit={handleAddHabit} onClose={() => setIsModalOpen(false)} />
+          <HabitSuggestionModal isOpen={true} onAddHabit={handleAddHabit} onClose={() => setIsModalOpen(false)} habits={habits} />
       }
       <AnimatePresence>
         {showStats && (

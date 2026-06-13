@@ -70,6 +70,10 @@ button:hover {
     z-index: 1;
 }
 
+.purple-gradient {
+    @apply bg-gradient-to-r from-[#a29bfe] to-[#dfe6fd] bg-clip-text text-transparent;
+}
+
 .ghost-habit {
     @apply flex flex-col bg-surface/30 my-3 py-5 pl-5 pr-37  rounded-tr-xl rounded-br-xl border-l-3;
 }

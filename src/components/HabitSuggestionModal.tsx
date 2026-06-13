@@ -1,5 +1,5 @@
 import type { Habit } from "../types"
-import React, { useState } from "react"
+import { useState } from "react"
 import { IconX, IconPlus, IconSparkles } from '@tabler/icons-react'
 
 interface ModalProps {
@@ -9,18 +9,15 @@ interface ModalProps {
     onAddHabit: (name: string) => void
 }
 
-function HabitSuggestionModal({habits, isOpen, onClose, onAddHabit}: ModalProps) {
+function HabitSuggestionModal({isOpen, onClose, onAddHabit}: ModalProps) {
     const [input, setInput] = useState('')
     const [suggestions, setSuggestions] = useState<string[]>([])
 
     async function getSuggestions() {
-        const response = await fetch("/api/v1/messages", {
+        const response = await fetch("/.netlify/functions/claude", {
             method: "POST",
             headers: {
-                "Content-Type": "application/json",
-                "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
-                "anthropic-dangerous-direct-browser-access": "true"
+                "Content-Type": "application/json"
             },
             body: JSON.stringify({
                 model: "claude-sonnet-4-5",

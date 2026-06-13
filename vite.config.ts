@@ -6,14 +6,16 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    react()
   ],
   server: {
     proxy: {
       '/api': {
-        target: 'https://api.anthropic.com',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+          target: 'http://localhost:8888',
+          changeOrigin: true,
       }
     }
-  }
+  },
+
+  base: '/steadfast-habit-tracker/'
 })
