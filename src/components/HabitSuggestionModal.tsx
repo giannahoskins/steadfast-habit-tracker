@@ -1,6 +1,6 @@
 import type { Habit } from "../types"
 import { useState } from "react"
-import { IconX, IconPlus, IconSparkles } from '@tabler/icons-react'
+import { IconX, IconPlus, IconSparkles, IconLoader2 } from '@tabler/icons-react'
 
 interface ModalProps {
     habits: Habit[],
@@ -12,31 +12,37 @@ interface ModalProps {
 function HabitSuggestionModal({isOpen, onClose, onAddHabit}: ModalProps) {
     const [input, setInput] = useState('')
     const [suggestions, setSuggestions] = useState<string[]>([])
+    const [isLoading, setIsLoading] = useState(false)
 
     async function getSuggestions() {
-        const response = await fetch("/.netlify/functions/claude", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                model: "claude-sonnet-4-5",
-                max_tokens: 1000,
-                messages: [
-                    { role: "user",
-                        content: `The user wants to achieve the following goal: ${input}. 
-                        Suggest 5 specific habits they could track daily to help reach that goal. 
-                        Return only a JSON array of habit names, nothing else.`
-                    }
-                ]
+        setIsLoading(true)
+        try {
+            const response = await fetch("/.netlify/functions/claude", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: "claude-sonnet-4-5",
+                    max_tokens: 1000,
+                    messages: [
+                        { role: "user",
+                            content: `The user wants to achieve the following goal: ${input}. 
+                            Suggest 5 specific habits they could track daily to help reach that goal. 
+                            Return only a JSON array of habit names, nothing else.`
+                        }
+                    ]
+                })
             })
-        })
 
-        const data = await response.json()
-        console.log(data)
-        const text = data.content[0].text.replace(/```json\n?|\n?```/g, '').trim()
-        const parsed = JSON.parse(text)
-        setSuggestions(parsed)
+            const data = await response.json()
+            console.log(data)
+            const text = data.content[0].text.replace(/```json\n?|\n?```/g, '').trim()
+            const parsed = JSON.parse(text)
+            setSuggestions(parsed)
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     function handleAddSuggestion(suggestion: string) {
@@ -64,9 +70,9 @@ function HabitSuggestionModal({isOpen, onClose, onAddHabit}: ModalProps) {
                         )}
                         <div className="w-[100%] flex flex-nowrap items-center justify-end gap-3 items-center">
                             <input value={input} className="border border-subtle rounded px-3 py-2 flex-1 w-full" placeholder="e.g. I want to get healthier, sleep better, etc." onChange={(e) => setInput(e.target.value)}></input>
-                            <button onClick={() => getSuggestions()} className="purple-button !p-3 flex items-center md:my-0">
+                            <button onClick={() => getSuggestions()} className="purple-button !p-3 flex items-center md:my-0" disabled={isLoading}>
                                 <span className="flex items-center relative z-10">
-                                    <IconSparkles size={16} />
+                                    {isLoading ? <IconLoader2 size={16} className="animate-spin" /> : <IconSparkles size={16} />}
                                 </span>
                             </button>
                         </div>
