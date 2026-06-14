@@ -1,6 +1,7 @@
 import type { Habit } from "../types"
 import { useState } from "react"
 import { IconX, IconPlus, IconSparkles, IconLoader2 } from '@tabler/icons-react'
+import { motion, AnimatePresence } from "motion/react"
 
 interface ModalProps {
     habits: Habit[],
@@ -54,8 +55,14 @@ function HabitSuggestionModal({isOpen, onClose, onAddHabit}: ModalProps) {
         <>
             {isOpen && (
                 <>
-                    <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-                    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-surface p-8 md:p-11 rounded-xl z-10 min-w-[90%] sm:min-w-[500px]">
+                     <motion.div 
+                        className="fixed inset-0 bg-black/50"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={onClose} 
+                    />
+                    <motion.div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-surface p-8 md:p-11 rounded-xl z-10 min-w-[90%] sm:min-w-[500px]" initial={{ opacity: 0, y: 20, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20, scale: 0.97 }} transition={{ duration: 0.2, ease: "easeOut" }}>
                         <h2 className="header-text mb-8">What are you working toward?</h2>
                         <p className="body-text mb-8">Tell us your goal and we'll suggest habits to help you get there.</p>
                         {suggestions.length > 0 && (
@@ -77,7 +84,7 @@ function HabitSuggestionModal({isOpen, onClose, onAddHabit}: ModalProps) {
                             </button>
                         </div>
                         <button onClick={onClose} className="absolute top-2.5 right-2.5 shrink-0"><IconX stroke={1} className="w-6"/></button>
-                    </div>
+                    </motion.div>
                 </>
             )}
         </>

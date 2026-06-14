@@ -1,6 +1,8 @@
 import type { Habit } from "../types"
 import React, { useState } from "react"
 import { IconArrowNarrowLeft, IconArrowNarrowRight, IconTrash, IconEdit, IconSparkles, IconPlus, IconChartBarPopular } from '@tabler/icons-react';
+import * as Tone from "tone"
+import { motion } from "motion/react"
 
 interface CalendarProps {
     habits: Habit[],
@@ -15,11 +17,29 @@ interface CalendarProps {
     setIsModalOpen: (value: boolean) => void
 }
 
+async function playCompletionSound() {
+    await Tone.start()
+    const synth = new Tone.Synth({
+        oscillator: { type: "triangle" },
+        envelope: {
+            attack: 0.01,
+            decay: 0.1,
+            sustain: 0.3,
+            release: 0.5
+        }
+    }).toDestination()
+
+    const now = Tone.now()
+    synth.triggerAttackRelease("E5", "8n", now)
+    synth.triggerAttackRelease("G5", "8n", now + 0.12)
+}
+
 function Calendar({ habits, onDeleteHabit, onCompleteHabit, isAddingHabit, setIsAddingHabit, onAddHabit, onSaveEdit, setShowStats, setIsModalOpen }: CalendarProps) {
     const [newHabitName, setNewHabitName] = useState('')
     const [editingHabitId, setEditingHabitId] = useState<string | null>(null)
     const [editHabitName, setEditHabitName] = useState('')
     const [hoveredHabitId, setHoveredHabitId] = useState<string | null>(null)
+    const [animatingCell, setAnimatingCell] = useState<string | null>(null)
 
     const [currentDate, setCurrentDate] = useState(() => {
         const today = new Date()
@@ -83,8 +103,6 @@ function Calendar({ habits, onDeleteHabit, onCompleteHabit, isAddingHabit, setIs
                         </div>
                     )}
                     {habits.map(habit => {
-                        
-
                         return (
                             <React.Fragment key={habit.id}>
                                 <div style={{ color: habit.color }} className="habit-grid-name w-full border-b border-border flex items-center pl-3 pr-16 relative" onMouseEnter={() => setHoveredHabitId(habit.id)} onMouseLeave={() => setHoveredHabitId(null)}>
@@ -115,8 +133,36 @@ function Calendar({ habits, onDeleteHabit, onCompleteHabit, isAddingHabit, setIs
                                 {days.map(day => {
                                     const date = `${day.getFullYear()}-${day.getMonth() + 1}-${day.getDate()}`
                                     return (
-                                        <div className={`habit-cell flex items-center justify-center border-b border-border min-h-20 ${new Date(date) > todaysDate ? 'opacity-30' : ''}`} key={day.getDate()} onClick={() => { if (new Date(date) <= todaysDate) onCompleteHabit(habit.id, date)}}>
-                                            {habit.completedDates.includes(date) ? <div style={{ backgroundColor: habit.color }} className="w-11 h-11 rounded cursor-pointer"></div> : <div className="w-[50px] h-[50px] border border-border rounded bg-surface-raised cursor-pointer"></div>}
+                                        <div className={`habit-cell flex items-center justify-center border-b border-border min-h-20 ${new Date(date) > todaysDate ? 'opacity-30' : ''}`} key={day.getDate()}
+                                            onClick={() => {
+                                                if (new Date(date) <= todaysDate) {
+                                                    onCompleteHabit(habit.id, date)
+                                                    playCompletionSound()
+                                                    setAnimatingCell(`${habit.id}-${date}`)
+                                                    setTimeout(() => setAnimatingCell(null), 600)
+                                                }
+                                            }}>
+                                            {habit.completedDates.includes(date) ? 
+                                                <motion.div 
+                                                    style={{ backgroundColor: habit.color }} 
+                                                    className="w-11 h-11 rounded cursor-pointer flex items-center justify-center"
+                                                    animate={animatingCell === `${habit.id}-${date}` ? { scale: [1, 1.2, 1] } : {}}
+                                                    transition={{ duration: 0.4 }}
+                                                >
+                                                    {animatingCell === `${habit.id}-${date}` && (
+                                                        <motion.span
+                                                            initial={{ opacity: 0 }}
+                                                            animate={{ opacity: [0, 1, 0] }}
+                                                            transition={{ duration: 0.5 }}
+                                                            className="text-white text-sm font-bold"
+                                                        >
+                                                            ✓
+                                                        </motion.span>
+                                                    )}
+                                                </motion.div> 
+                                                : 
+                                                <div className="w-[50px] h-[50px] border border-border rounded bg-surface-raised cursor-pointer"></div>
+                                            }
                                         </div>
                                     )
                                 })}
