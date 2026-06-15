@@ -1,7 +1,7 @@
 import type { Habit } from "../types"
 import { useState } from "react"
 import { IconX, IconPlus, IconSparkles, IconLoader2 } from '@tabler/icons-react'
-import { motion, AnimatePresence } from "motion/react"
+import { motion } from "motion/react"
 
 interface ModalProps {
     habits: Habit[],
