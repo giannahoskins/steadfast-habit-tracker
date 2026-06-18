@@ -125,7 +125,7 @@ function Calendar({ habits, onDeleteHabit, onCompleteHabit, isAddingHabit, setIs
                 <div id="habit_grid" className="grid border border-border rounded" style={{ gridTemplateColumns: `250px repeat(7, 1fr)`, minWidth: '640px' }}>
                     <div className="border-r border-b border-surface bg-surface-raised flex items-center p-7.5 text-days uppercase font-semibold"><span>Habits</span></div>
                     {days.map(day => 
-                        <div className="day flex flex-col items-center justify-center border-b border-surface bg-surface-raised" key={day.getDate()}>
+                        <div className="day flex flex-col items-center justify-center border-b border-surface cursor-pointer" key={day.getDate()} onClick={() => setSelectedDay(day)} style={{ backgroundColor: day.toDateString() === selectedDay.toDateString() ? 'rgba(108,92,231,0.12)' : 'var(--color-surface-raised)' }}>
                             <span className="block text-dates font-bold">{day.toLocaleString('default', { month: 'numeric', day: 'numeric'} )}</span>
                             <span className="block uppercase text-days font-semibold">{day.toLocaleString('default', { weekday: 'short' })}</span>
                         </div>
@@ -161,7 +161,7 @@ function Calendar({ habits, onDeleteHabit, onCompleteHabit, isAddingHabit, setIs
                                 {days.map(day => {
                                     const date = `${day.getFullYear()}-${day.getMonth() + 1}-${day.getDate()}`
                                     return (
-                                        <div className={`habit-cell flex items-center justify-center border-b border-border min-h-20 ${new Date(date) > todaysDate ? 'opacity-30' : ''}`} key={day.getDate()}
+                                        <div className={`habit-cell flex items-center justify-center border-b border-border min-h-20 ${new Date(date) > todaysDate ? 'opacity-30' : ''}`} key={day.getDate()} style={day.toDateString() === selectedDay.toDateString() ? { backgroundColor: 'rgba(108,92,231,0.05)' } : {}}
                                             onClick={() => {
                                                 if (new Date(date) <= todaysDate) {
                                                     if (!habit.completedDates.includes(date)) {
