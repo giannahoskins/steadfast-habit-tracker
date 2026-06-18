@@ -2,7 +2,8 @@ import type { Habit } from "../types"
 import React, { useState } from "react"
 import { IconArrowNarrowLeft, IconArrowNarrowRight, IconTrash, IconEdit, IconSparkles, IconPlus, IconChartBarPopular } from '@tabler/icons-react';
 import * as Tone from "tone"
-import { motion } from "motion/react"
+import { motion, AnimatePresence } from "motion/react"
+import { calculateStreak } from "../utils.ts"
 
 interface CalendarProps {
     habits: Habit[],
@@ -34,18 +35,43 @@ async function playCompletionSound() {
     synth.triggerAttackRelease("G5", "8n", now + 0.12)
 }
 
+async function playMilestoneSound() {
+    await Tone.start()
+    const synth = new Tone.Synth({
+        oscillator: { type: "triangle" },
+        envelope: {
+            attack: 0.01,
+            decay: 0.1,
+            sustain: 0.3,
+            release: 0.8
+        }
+    }).toDestination()
+
+    const now = Tone.now()
+    synth.triggerAttackRelease("E5", "8n", now)
+    synth.triggerAttackRelease("G5", "8n", now + 0.15)
+    synth.triggerAttackRelease("C6", "4n", now + 0.3)
+}
+
 function Calendar({ habits, onDeleteHabit, onCompleteHabit, isAddingHabit, setIsAddingHabit, onAddHabit, onSaveEdit, setShowStats, setIsModalOpen }: CalendarProps) {
     const [newHabitName, setNewHabitName] = useState('')
     const [editingHabitId, setEditingHabitId] = useState<string | null>(null)
     const [editHabitName, setEditHabitName] = useState('')
     const [hoveredHabitId, setHoveredHabitId] = useState<string | null>(null)
     const [animatingCell, setAnimatingCell] = useState<string | null>(null)
+    const [milestone, setMilestone] = useState<number | null>(null)
 
     const [currentDate, setCurrentDate] = useState(() => {
         const today = new Date()
         const startOfWeek = new Date(today)
         startOfWeek.setDate(today.getDate() - today.getDay())
         return startOfWeek
+    })
+
+    const [selectedDay, setSelectedDay] = useState(() => {
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        return today
     })
 
     const days = Array.from({ length: 7 }, (_, i) => {
@@ -93,7 +119,9 @@ function Calendar({ habits, onDeleteHabit, onCompleteHabit, isAddingHabit, setIs
                 <button className="navigation-button next" onClick={handleNextWeek}><IconArrowNarrowRight stroke={2} /></button>
             </div>
             <button onClick={() => setShowStats(true)} className="purple-button mx-auto my-6 flex items-center z-0"><IconChartBarPopular className="mr-2.5"/><span className="block">Stats</span></button>
-            <div className="overflow-x-auto w-full">
+            
+            {/* Desktop */}
+            <div className="hidden md:block overflow-x-auto w-full">
                 <div id="habit_grid" className="grid border border-border rounded" style={{ gridTemplateColumns: `250px repeat(7, 1fr)`, minWidth: '640px' }}>
                     <div className="border-r border-b border-surface bg-surface-raised flex items-center p-7.5 text-days uppercase font-semibold"><span>Habits</span></div>
                     {days.map(day => 
@@ -136,10 +164,21 @@ function Calendar({ habits, onDeleteHabit, onCompleteHabit, isAddingHabit, setIs
                                         <div className={`habit-cell flex items-center justify-center border-b border-border min-h-20 ${new Date(date) > todaysDate ? 'opacity-30' : ''}`} key={day.getDate()}
                                             onClick={() => {
                                                 if (new Date(date) <= todaysDate) {
+                                                    if (!habit.completedDates.includes(date)) {
+                                                        setAnimatingCell(`${habit.id}-${date}`)
+                                                        setTimeout(() => setAnimatingCell(null), 600)
+
+                                                        const newStreak = calculateStreak([...habit.completedDates, date])
+                                                        if ([3, 7, 14, 30, 60, 100].includes(newStreak)) {
+                                                            setMilestone(newStreak)
+                                                            playMilestoneSound()
+                                                            setTimeout(() => setMilestone(null), 3000)
+                                                        } else {
+                                                            playCompletionSound()
+                                                        }
+                                                    }
+
                                                     onCompleteHabit(habit.id, date)
-                                                    playCompletionSound()
-                                                    setAnimatingCell(`${habit.id}-${date}`)
-                                                    setTimeout(() => setAnimatingCell(null), 600)
                                                 }
                                             }}>
                                             {habit.completedDates.includes(date) ? 
@@ -186,6 +225,121 @@ function Calendar({ habits, onDeleteHabit, onCompleteHabit, isAddingHabit, setIs
                     </div>
                 </div>
             </div>
+
+            {/* Mobile view */}
+            <div className="md:hidden">
+                {/* Week pill tabs */}
+                <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                    {days.map(day => {
+                        const isSelected = day.toDateString() === selectedDay.toDateString()
+                        const isToday = day.toDateString() === new Date().toDateString()
+                        return (
+                            <button
+                                key={day.getDate()}
+                                onClick={() => setSelectedDay(day)}
+                                className={`flex flex-col items-center px-3 py-2 rounded-lg shrink-0 border transition duration-200
+                                    ${isSelected 
+                                        ? 'bg-accent/15 border-accent/40' 
+                                        : 'border-transparent'
+                                    }`}
+                            >
+                                <span className={`text-xs uppercase tracking-wider ${isSelected ? 'text-accent' : 'text-days'}`}>
+                                    {day.toLocaleString('default', { weekday: 'short' })}
+                                </span>
+                                <span className={`text-sm font-bold ${isSelected || isToday ? 'text-accent' : 'text-dates'}`}>
+                                    {day.getDate()}
+                                </span>
+                            </button>
+                        )
+                    })}
+                </div>
+
+                {/* Habit checklist for selected day */}
+                <div className="flex flex-col gap-2">
+                    {habits.map(habit => {
+                        const date = `${selectedDay.getFullYear()}-${selectedDay.getMonth() + 1}-${selectedDay.getDate()}`
+                        const isCompleted = habit.completedDates.includes(date)
+                        const isFuture = selectedDay > todaysDate
+                        return (
+                            <div
+                                key={habit.id}
+                                onClick={() => {
+                                    if (!isFuture) {
+                                        if (!isCompleted) {
+                                            playCompletionSound()
+                                            const newStreak = calculateStreak([...habit.completedDates, date])
+                                            if ([3, 7, 14, 30, 60, 100].includes(newStreak)) {
+                                                setMilestone(newStreak)
+                                                setTimeout(() => playMilestoneSound(), 400)
+                                                setTimeout(() => setMilestone(null), 3000)
+                                            }
+                                        }
+                                        onCompleteHabit(habit.id, date)
+                                    }
+                                }}
+                                className={`flex items-center gap-3 p-4 rounded-lg border transition duration-200 cursor-pointer
+                                    ${isFuture ? 'opacity-30' : ''}
+                                    ${isCompleted ? 'border-transparent' : 'border-border bg-surface-raised'}`}
+                                style={isCompleted ? { backgroundColor: `${habit.color}15`, borderColor: `${habit.color}40` } : {}}
+                            >
+                                <div
+                                    className="w-6 h-6 rounded flex items-center justify-center shrink-0"
+                                    style={{ backgroundColor: isCompleted ? habit.color : 'transparent', border: isCompleted ? 'none' : `1.5px solid #3a3a52` }}
+                                >
+                                    {isCompleted && <span className="text-white text-xs font-bold">✓</span>}
+                                </div>
+                                <span className="text-sm font-medium" style={{ color: habit.color }}>{habit.name}</span>
+                            </div>
+                        )
+                    })}
+                </div>
+
+                {/* Add habit field */}
+                {isAddingHabit && (
+                    <input
+                        autoFocus
+                        className="w-full border border-border rounded px-3 py-2 mt-2"
+                        placeholder="Habit name..."
+                        value={newHabitName}
+                        onChange={(e) => setNewHabitName(e.target.value)}
+                        onBlur={() => setIsAddingHabit(false)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') addNewHabit()
+                        }}
+                    />
+                )}
+
+                {/* Footer */}
+                <div className="flex items-center gap-4 mt-4 pt-4 border-t border-border">
+                    <button className="flex items-center text-dates" onClick={() => setIsAddingHabit(true)}>
+                        <IconPlus size={16} /><span className="ml-2 text-sm">Add habit</span>
+                    </button>
+                    <button className="flex items-center text-accent" onClick={() => setIsModalOpen(true)}>
+                        <IconSparkles size={16} /><span className="ml-2 text-sm">AI suggest</span>
+                    </button>
+                </div>
+            </div>
+            <AnimatePresence>
+                {milestone && (
+                    <motion.div
+                        className="fixed inset-0 flex items-center justify-center z-50"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
+                        <motion.div
+                            className="text-center"
+                            initial={{ scale: 0.5, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.5, opacity: 0 }}
+                            transition={{ type: "spring", damping: 10, stiffness: 200 }}
+                        >
+                            <div className="text-8xl mb-4">🔥</div>
+                            <div className="text-5xl font-bold text-white">{milestone} Day Streak!</div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     )
 
