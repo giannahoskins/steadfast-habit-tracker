@@ -1,5 +1,5 @@
 import type { Habit } from "../types"
-import React, { useState } from "react"
+import React, { useState, useRef } from "react"
 import { IconArrowNarrowLeft, IconArrowNarrowRight, IconTrash, IconEdit, IconSparkles, IconPlus, IconChartBarPopular } from '@tabler/icons-react';
 import * as Tone from "tone"
 import { motion, AnimatePresence } from "motion/react"
@@ -60,6 +60,8 @@ function Calendar({ habits, onDeleteHabit, onCompleteHabit, isAddingHabit, setIs
     const [hoveredHabitId, setHoveredHabitId] = useState<string | null>(null)
     const [animatingCell, setAnimatingCell] = useState<string | null>(null)
     const [milestone, setMilestone] = useState<number | null>(null)
+    const [swipedHabitId, setSwipedHabitId] = useState<string | null>(null)
+    const touchStartX = useRef<number>(0)
 
     const [currentDate, setCurrentDate] = useState(() => {
         const today = new Date()
@@ -263,32 +265,53 @@ function Calendar({ habits, onDeleteHabit, onCompleteHabit, isAddingHabit, setIs
                         return (
                             <div
                                 key={habit.id}
-                                onClick={() => {
-                                    if (!isFuture) {
-                                        if (!isCompleted) {
-                                            playCompletionSound()
-                                            const newStreak = calculateStreak([...habit.completedDates, date])
-                                            if ([3, 7, 14, 30, 60, 100].includes(newStreak)) {
-                                                setMilestone(newStreak)
-                                                setTimeout(() => playMilestoneSound(), 400)
-                                                setTimeout(() => setMilestone(null), 3000)
-                                            }
-                                        }
-                                        onCompleteHabit(habit.id, date)
-                                    }
+                                onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX }}
+                                onTouchEnd={(e) => {
+                                    const diff = touchStartX.current - e.changedTouches[0].clientX
+                                    if (diff > 60) setSwipedHabitId(habit.id)
+                                    else if (diff < -20) setSwipedHabitId(null)
                                 }}
-                                className={`flex items-center gap-3 p-4 rounded-lg border transition duration-200 cursor-pointer
-                                    ${isFuture ? 'opacity-30' : ''}
-                                    ${isCompleted ? 'border-transparent' : 'border-border bg-surface-raised'}`}
-                                style={isCompleted ? { backgroundColor: `${habit.color}15`, borderColor: `${habit.color}40` } : {}}
+                                className="relative overflow-hidden rounded-lg"
                             >
+                                {swipedHabitId === habit.id && (
+                                    <button 
+                                        className="absolute right-0 top-0 bottom-0 bg-red-500 px-5 text-white text-sm font-medium z-10"
+                                        onClick={() => {
+                                            onDeleteHabit(habit.id)
+                                            setSwipedHabitId(null)
+                                        }}
+                                    >
+                                        Delete
+                                    </button>
+                                )}
                                 <div
-                                    className="w-6 h-6 rounded flex items-center justify-center shrink-0"
-                                    style={{ backgroundColor: isCompleted ? habit.color : 'transparent', border: isCompleted ? 'none' : `1.5px solid #3a3a52` }}
+                                    onClick={() => { 
+                                        if (!isFuture) {
+                                            if (!isCompleted) {
+                                                playCompletionSound()
+                                                const newStreak = calculateStreak([...habit.completedDates, date])
+                                                if ([3, 7, 14, 30, 60, 100].includes(newStreak)) {
+                                                    setMilestone(newStreak)
+                                                    setTimeout(() => playMilestoneSound(), 400)
+                                                    setTimeout(() => setMilestone(null), 3000)
+                                                }
+                                            }
+                                            onCompleteHabit(habit.id, date)
+                                        }    
+                                    }}
+                                    className={`flex items-center gap-3 p-4 border transition duration-200 cursor-pointer
+                                        ${isFuture ? 'opacity-30' : ''}
+                                        ${isCompleted ? 'border-transparent' : 'border-border bg-surface-raised'}`}
+                                    style={isCompleted ? { backgroundColor: `${habit.color}15`, borderColor: `${habit.color}40` } : {}}
                                 >
-                                    {isCompleted && <span className="text-white text-xs font-bold">✓</span>}
+                                    <div
+                                        className="w-6 h-6 rounded flex items-center justify-center shrink-0"
+                                        style={{ backgroundColor: isCompleted ? habit.color : 'transparent', border: isCompleted ? 'none' : `1.5px solid #3a3a52` }}
+                                    >
+                                        {isCompleted && <span className="text-white text-xs font-bold">✓</span>}
+                                    </div>
+                                    <span className="text-sm font-medium" style={{ color: habit.color }}>{habit.name}</span>
                                 </div>
-                                <span className="text-sm font-medium" style={{ color: habit.color }}>{habit.name}</span>
                             </div>
                         )
                     })}
@@ -296,17 +319,28 @@ function Calendar({ habits, onDeleteHabit, onCompleteHabit, isAddingHabit, setIs
 
                 {/* Add habit field */}
                 {isAddingHabit && (
-                    <input
-                        autoFocus
-                        className="w-full border border-border rounded px-3 py-2 mt-2"
-                        placeholder="Habit name..."
-                        value={newHabitName}
-                        onChange={(e) => setNewHabitName(e.target.value)}
-                        onBlur={() => setIsAddingHabit(false)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') addNewHabit()
-                        }}
-                    />
+                    <div className="flex gap-2 mt-2">
+                        <input
+                            autoFocus
+                            className="flex-1 border border-border rounded px-3 py-2"
+                            placeholder="Habit name..."
+                            value={newHabitName}
+                            onChange={(e) => setNewHabitName(e.target.value)}
+                            onBlur={() => {
+                                setTimeout(() => setIsAddingHabit(false), 150)
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') addNewHabit()
+                            }}
+                        />
+                        <button 
+                            className="purple-button !px-3"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={addNewHabit}
+                        >
+                            <IconPlus size={16} />
+                        </button>
+                    </div>
                 )}
 
                 {/* Footer */}
